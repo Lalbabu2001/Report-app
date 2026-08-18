@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,14 +8,14 @@
 <title>Daily Report Manager</title>
 <script>
 // ── PASTE YOUR FIREBASE CONFIG HERE ──────────────────
-var firebaseConfig = {
-    apiKey: "AIzaSyD4gJmQleYw3q48s0apMRFLdB-wdxvzyes",
+const firebaseConfig = {
+  apiKey: "AIzaSyD4gJmQleYw3q48s0apMRFLdB-wdxvzyes",
   authDomain: "report-essdpupri.firebaseapp.com",
   projectId: "report-essdpupri",
   storageBucket: "report-essdpupri.firebasestorage.app",
   messagingSenderId: "576261090325",
   appId: "1:576261090325:web:25859ef1d8dda89ace721c"
-  };
+};
 // ─────────────────────────────────────────────────────
 var _auth=null,_db=null,_fbReady=false,_fbError=false;
 var _pendingLogin=null; // queued login call waiting for firebase
@@ -25,7 +27,8 @@ var _pendingLogin=null; // queued login call waiting for firebase
   onerror="document.getElementById('lm').textContent='Firebase Auth failed to load.';document.getElementById('lm').className='msg error show';_fbError=true"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"
   onerror="document.getElementById('lm').textContent='Firebase Firestore failed to load.';document.getElementById('lm').className='msg error show';_fbError=true"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Swapped standard SheetJS community version for xlsx-js-style which supports visual spreadsheet formatting -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 /* Initialize Firebase after scripts are loaded */
@@ -101,7 +104,7 @@ html,body{height:100%;background:var(--bg);color:var(--tx);font-family:'Segoe UI
 @media(min-width:560px){.tbar-nm{display:inline}.tbar-role{display:inline}}
 .tbar-btn{background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.35);
   border-radius:8px;padding:6px 13px;font-size:13px;font-weight:700;cursor:pointer;
-  display:flex;align-items:center;gap:5px;white-space:nowrap;transition:.15s}
+  display:flex;align-items:center;justify-content:center;font-weight:700;margin-right:2px}
 .tbar-btn:hover{background:rgba(255,255,255,.28)}
 .tbar-ref{background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.3);
   border-radius:8px;padding:6px 14px;font-size:14px;font-weight:700;cursor:pointer;
@@ -174,6 +177,8 @@ input[type=color]{padding:2px 3px;height:34px;cursor:pointer}
 .mt2{margin-top:8px}.mt3{margin-top:14px}.mb2{margin-bottom:8px}.mb3{margin-bottom:14px}
 .muted{color:var(--mu);font-size:12px}.bold{font-weight:700}.hidden{display:none!important}
 hr{border:none;border-top:1px solid var(--bd);margin:14px 0}
+/* flex column helper */
+.flex-col{flex-direction:column}
 /* TOAST */
 #toast{position:fixed;bottom:18px;right:14px;z-index:9999;display:flex;flex-direction:column;gap:6px;pointer-events:none}
 .ti{background:var(--tx);color:#fff;border-radius:10px;padding:10px 16px;font-size:13px;
@@ -287,7 +292,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:14px 0}
 .rh-n{top:-3px}.rh-s{bottom:-3px}.rh-e{right:-3px}.rh-w{left:-3px}
 .rh-nw,.rh-ne,.rh-sw,.rh-se{width:10px;height:10px;background:var(--ac);border-radius:2px}
 .rh-nw{top:-4px;left:-4px;cursor:nw-resize}.rh-ne{top:-4px;right:-4px;cursor:ne-resize}
-.rh-sw{bottom:-4px;left:-4px;cursor:sw-resize}.rh-se{bottom:-4px;right:-4px;cursor:se-resize}
+.rh-sw{bottom:-4px;left:-4px;cursor:sw-resize}.rh-se{bottom:-4px;right:-4px;cursor:ne-resize}
 /* COL CONFIG */
 .ccr{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:11px 13px;margin-bottom:8px}
 .ccr-g{display:grid;grid-template-columns:2fr 1fr 1fr 1.5fr 1fr auto;gap:9px;align-items:end}
@@ -383,10 +388,15 @@ hr{border:none;border-top:1px solid var(--bd);margin:14px 0}
         <button class="btn btn-p btn-sm" onclick="applyVF()">Apply</button>
         <button class="btn btn-gh btn-sm" onclick="clearVF()">Clear</button>
       </div>
+      <!-- Instant Date formatting feedback label -->
+      <div id="v-selected-range-display" class="muted" style="margin-bottom: 12px; font-weight: 700; color: var(--ac)"></div>
       <div class="date-nav">
         <button class="btn btn-gh btn-sm" onclick="vPrev()">◀ Prev</button>
         <div class="dn-d" id="v-cur">—</div>
         <button class="btn btn-gh btn-sm" onclick="vNext()">Next ▶</button>
+        <button class="btn btn-p btn-sm" onclick="vToday()">Today</button>
+        <button class="btn btn-a2 btn-sm" onclick="vAllTables()">All Tables</button>
+        <button class="btn btn-ok btn-sm" id="v-cum-btn" onclick="vCumulative()">Cumulative View</button>
         <div class="f1"></div>
         <div id="v-by" class="muted"></div>
       </div>
@@ -431,6 +441,7 @@ hr{border:none;border-top:1px solid var(--bd);margin:14px 0}
         <div class="flex ac jb mb3" style="flex-wrap:wrap;gap:8px">
           <div class="ct" style="margin:0">📐 Static Table Builder</div>
           <div class="flex gap2 fw">
+            <button class="btn btn-a2 btn-sm" id="sb-undo-btn" onclick="undoSB()">↩ Undo</button>
             <button class="btn btn-gh btn-sm" onclick="cancelB()">✕ Cancel</button>
             <button class="btn btn-gh btn-sm" onclick="prevStatic()">👁 Preview</button>
             <button class="btn btn-ok btn-sm" onclick="saveST()">💾 Save Template</button>
@@ -652,13 +663,18 @@ hr{border:none;border-top:1px solid var(--bd);margin:14px 0}
 var ADMIN_PW='admin@123';
 var CU=null,USERS={},TMPLS={};
 var ACTIVE_TMPL=null,VIEW_TMPL=null;
-var V_DATES=[],V_IDX=0,V_FROM='',V_TO='';
+var V_DATES=[],V_IDX=0,V_FROM='',V_TO='',V_ALL_MODE=false,V_CUMULATIVE_MODE=false;
 var EDIT_REC=null,MNG_TMPL=null,SB_ET=null,CB_ET=null;
 var SB_CELLS=[],SB_NID=1,SB_EC=null;
 var DRAG=null,DX=0,DY=0;
 var RESIZE=null,RDIR='',ROX=0,ROY=0,RX0=0,RY0=0,RW0=0,RH0=0;
 var APPROVED_EDIT=null;
 var GRID=15;
+
+/* State history trackers for builder Undos */
+var SB_HISTORY = [];
+var CELL_DRAG_START = null;
+
 var QUOTES=[
   {q:"The secret of getting ahead is getting started.",a:"Mark Twain"},
   {q:"Without data you're just another person with an opinion.",a:"W. Edwards Deming"},
@@ -684,7 +700,10 @@ function FA(p){return _db.collection(p).get()}
 function $(i){return document.getElementById(i)}
 function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function todayStr(){return new Date().toISOString().split('T')[0]}
-function fmtDate(d){if(!d||d==='—')return'—';var p=d.split('-');return p.length===3?p[2]+'-'+p[1]+'-'+p[0]:d}
+
+/* Date formatting set to dd/mm/yyyy with slashes */
+function fmtDate(d){if(!d||d==='—')return'—';var p=d.split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:d}
+
 function nowH(){return new Date().getHours()}
 function r2(n){return Math.round((parseFloat(n)||0)*100)/100}
 function loading(b){$('lo').classList.toggle('show',b)}
@@ -702,17 +721,15 @@ function closeMo(id){$(id).classList.remove('open')}
 document.querySelectorAll('.mo').forEach(function(o){o.addEventListener('click',function(e){if(e.target===o)o.classList.remove('open')})});
 function snapG(v){return Math.round(v/GRID)*GRID}
 
-/* ═══ AUTH — Pure .then/.catch — works on ALL Android browsers ═══ */
+/* ═══ AUTH ═══ */
 function au(){return _auth}
 function db2(){return _db}
 
 function doLogin(){
-  /* If Firebase not ready yet, queue the login */
   if(!_fbReady){
     if(_fbError){showMsg('lm','Firebase failed to load. Check internet and reload.','error');return}
     showMsg('lm','Connecting to server…','info');
     _pendingLogin=doLogin;
-    /* Poll until ready (max 10 seconds) */
     var tries=0;
     var poll=setInterval(function(){
       tries++;
@@ -745,7 +762,6 @@ function doLogin(){
   }).catch(function(e){
     hideMsg('lm');
     var code=e.code||'';
-    /* First-time admin — create the account */
     if(uid==='admin'&&(code.indexOf('user-not-found')>=0||code.indexOf('invalid-credential')>=0||code.indexOf('invalid-login-credentials')>=0||code.indexOf('INVALID_LOGIN_CREDENTIALS')>=0)){
       showMsg('lm','Setting up admin account…','info');
       _auth.createUserWithEmailAndPassword('admin@report.app',ADMIN_PW).then(function(cr2){
@@ -755,7 +771,6 @@ function doLogin(){
         showMsg('lm',(e2.message||'Error creating account'),'error');resetBtn();
       });
     } else {
-      /* Show a helpful error based on error code */
       var msg='Invalid credentials';
       if(code.indexOf('network')>=0||code.indexOf('offline')>=0)msg='Network error — check your connection';
       else if(code.indexOf('too-many-requests')>=0)msg='Too many attempts — try again later';
@@ -781,7 +796,10 @@ function onLogin(){
   $('tnm').textContent=CU.displayName;
   $('trl').textContent=CU.role.toUpperCase();
   document.querySelectorAll('.admin-only').forEach(function(e){e.classList.toggle('hidden',CU.role!=='admin')});
-  loadAll(function(){goPage('dash')});
+  loadAll(function(){
+    autoGenerateTodayRecords();
+    goPage('dash');
+  });
 }
 function loadAll(cb){
   if(!_fbReady){setTimeout(function(){loadAll(cb)},300);return;}
@@ -906,25 +924,66 @@ function renderStaticEntry(tid,tmpl,date){
     });
   });
 }
+
+/* Calculates formulas and cumulative sums in a combined loop */
 function recalcStatic(){
   var area=$('entry-area');if(!area)return;
   var tmpl=TMPLS[area.dataset.tid];if(!tmpl)return;
   var cells=tmpl.cells||[];var vals={};
-  cells.forEach(function(c){var el=$('ec'+c.id);if(!el)return;vals[c.id]=el.tagName==='INPUT'?parseFloat(el.value)||0:parseFloat(el.textContent)||0});
+  
   cells.forEach(function(c){
-    if(c.type!=='cumulative')return;
-    var cum=(window._prevSums[c.cumSrc]||0)+(vals[c.cumSrc]||0);
-    vals[c.id]=cum;var el=$('ec'+c.id);if(el&&el.tagName!=='INPUT'){el.textContent=r2(cum);el.style.color=cum<0?'var(--er)':''}
+    var el=$('ec'+c.id);
+    if(!el)return;
+    if(el.tagName==='INPUT'){
+      vals[c.id] = el.type==='number' ? (parseFloat(el.value)||0) : el.value;
+    } else {
+      vals[c.id] = parseFloat(el.textContent)||0;
+    }
   });
+
   var changed=true,pass=0;
-  while(changed&&pass<6){changed=false;pass++;
+  while(changed && pass < 12){
+    changed = false;
+    pass++;
+    
     cells.forEach(function(c){
-      if(c.type!=='formula')return;
-      var el=$('ec'+c.id);if(!el||el.tagName==='INPUT')return;
-      try{var rv=evalF(c.formula||'',vals);if(vals[c.id]!==rv){vals[c.id]=rv;changed=true}el.textContent=r2(rv);el.style.color=rv<0?'var(--er)':''}catch(e){el.textContent='ERR'}
+      var el=$('ec'+c.id);
+      var oldVal = vals[c.id];
+      var newVal = oldVal;
+      
+      if(c.type==='cumulative'){
+        var srcVal = parseFloat(vals[c.cumSrc])||0;
+        var prev = parseFloat(window._prevSums[c.cumSrc])||0;
+        newVal = prev + srcVal;
+        
+        if(newVal !== oldVal){
+          vals[c.id] = newVal;
+          changed = true;
+          if(el && el.tagName!=='INPUT'){
+            el.textContent = r2(newVal);
+            el.style.color = newVal < 0 ? 'var(--er)' : '';
+          }
+        }
+      } 
+      else if(c.type==='formula'){
+        try {
+          newVal = evalF(c.formula||'', vals);
+        } catch(e) {
+          newVal = 'ERR';
+        }
+        if(newVal !== oldVal){
+          vals[c.id] = newVal;
+          changed = true;
+          if(el && el.tagName!=='INPUT'){
+            el.textContent = newVal === 'ERR' ? 'ERR' : r2(newVal);
+            el.style.color = (typeof newVal === 'number' && newVal < 0) ? 'var(--er)' : '';
+          }
+        }
+      }
     });
   }
 }
+
 function saveStaticEntry(tid,date){
   var tmpl=TMPLS[tid];var cells=tmpl.cells||[];var vals={};
   cells.forEach(function(c){var el=$('ec'+c.id);if(!el)return;vals[c.id]=el.tagName==='INPUT'?(el.type==='number'?parseFloat(el.value)||0:el.value):parseFloat(el.textContent)||el.textContent||0});
@@ -950,16 +1009,45 @@ function renderContEntry(tid,tmpl,date){
   var headHtml='';
   if(tmpl.heading)headHtml+='<div style="text-align:center;font-size:16px;font-weight:800;padding:8px 0 2px">'+escH(tmpl.heading)+'</div>';
   if(tmpl.subheading)headHtml+='<div style="text-align:center;font-size:13px;color:var(--t2);padding:0 0 8px">'+escH(tmpl.subheading)+'</div>';
+  
   var th='';if(hs)th+='<th style="background:#1e40af;color:#fff;border:1px solid #1e40af;width:44px;text-align:center">S.No</th>';
   cols.forEach(function(col){var w=col.colWidth?'width:'+col.colWidth+'px;':'';th+='<th style="background:'+(col.thBg||'#2563eb')+';color:'+(col.thFc||'#fff')+';font-weight:'+(col.thBold!==false?'bold':'normal')+';font-size:'+(col.thFs||12)+'px;border:1px solid '+(col.thBg||'#2563eb')+';padding:9px 11px;'+w+'">'+escH(col.label)+'</th>';});
   th+='<th style="background:#475569;color:#fff;border:1px solid #475569;width:32px"></th>';
+  
   $('entry-area').innerHTML='<div class="card">'+headHtml+
     '<div class="ctw"><table class="ctbl"><thead><tr>'+th+'</tr></thead><tbody id="ct-body"></tbody></table></div>'+
     '<div class="flex gap2 mt3"><button class="btn btn-gh btn-sm" onclick="addCRow(\''+tid+'\')">+ Add Row</button>'+
     '<button class="btn btn-ok btn-sm" onclick="saveCRows(\''+tid+'\',\''+date+'\')">💾 Save All Rows</button></div></div>';
-  $('entry-area').dataset.tid=tid;_ri=0;addCRow(tid);
-  loadTodayEntries(tid,tmpl,date);
+  
+  $('entry-area').dataset.tid=tid;_ri=0;
+  
+  // Load today's existing saved rows into the editable form
+  _db.collection('records')
+    .where('templateId', '==', tid)
+    .where('type', '==', 'continuous')
+    .where('date', '==', date)
+    .get()
+    .then(function(snap) {
+      var loadedRows = [];
+      snap.forEach(function(doc) {
+        var r = doc.data();
+        (r.rows || []).forEach(function(row) {
+          loadedRows.push(row);
+        });
+      });
+      
+      if (loadedRows.length > 0) {
+        loadedRows.forEach(function(row) {
+          addCRowWithData(tid, row);
+        });
+      } else {
+        addCRow(tid);
+      }
+      
+      loadTodayEntries(tid, tmpl, date);
+    });
 }
+
 function addCRow(tid){
   var tmpl=TMPLS[tid];var cols=tmpl.cols||[];var hs=tmpl.serialNumber;
   var tbody=$('ct-body');_ri=tbody.children.length+1;
@@ -984,8 +1072,37 @@ function addCRow(tid){
   dt.innerHTML='<button style="background:none;border:none;cursor:pointer;color:var(--er);font-size:14px;padding:2px 5px" onclick="this.closest(\'tr\').remove();renumRows()">✕</button>';
   tr.appendChild(dt);tbody.appendChild(tr);
 }
+
+function addCRowWithData(tid, rowData) {
+  var tmpl=TMPLS[tid];var cols=tmpl.cols||[];var hs=tmpl.serialNumber;
+  var tbody=$('ct-body');_ri=tbody.children.length+1;
+  var tr=document.createElement('tr');tr.dataset.row=_ri;
+  if(hs){var td0=document.createElement('td');td0.style.cssText='text-align:center;font-weight:700;color:var(--mu);border:1px solid var(--bd);background:#f8fafc';td0.textContent=_ri;tr.appendChild(td0)}
+  cols.forEach(function(col,ci){
+    var td=document.createElement('td');td.style.cssText='border:1px solid var(--bd);padding:4px 7px;background:'+(col.tdBg||'transparent');
+    var canEdit=canEditCol(col);
+    var initialVal = rowData[ci] !== undefined ? rowData[ci] : '';
+    if(col.type==='formula'||!canEdit){
+      td.id='cr_'+_ri+'_'+ci;td.dataset.ci=ci;td.style.color=col.tdFc||'var(--mu)';td.style.fontStyle='italic';td.style.background=col.tdBg||'#f8fafc';td.textContent=initialVal !== '' ? initialVal : '—';
+    } else {
+      var inp=document.createElement('input');inp.className='cti';
+      inp.type=col.type==='date_manual'?'date':'text';inp.inputMode=col.type==='date_manual'?'none':'decimal';
+      inp.placeholder=col.label;inp.dataset.ci=ci;inp.dataset.row=_ri;
+      inp.value=initialVal;
+      inp.style.color=col.tdFc||'var(--tx)';inp.style.fontWeight=col.tdBold?'bold':'normal';inp.style.fontSize=(col.tdFs||13)+'px';
+      var rowRef=_ri;inp.addEventListener('input',function(){recalcCRow(tid,rowRef)});
+      td.appendChild(inp);
+    }
+    tr.appendChild(td);
+  });
+  var dt=document.createElement('td');dt.style.cssText='border:1px solid var(--bd);text-align:center;padding:2px';
+  dt.innerHTML='<button style="background:none;border:none;cursor:pointer;color:var(--er);font-size:14px;padding:2px 5px" onclick="this.closest(\'tr\').remove();renumRows()">✕</button>';
+  tr.appendChild(dt);tbody.appendChild(tr);
+  recalcCRow(tid, _ri);
+}
+
 function canEditCol(col){
-  if(col.type==='formula')return false;if(CU.role==='admin')return true;
+  if(col.type==='formula')return false;if(CU.role!=='admin')return true;
   var a=(col.assignedTo||'').toLowerCase();return a==='any'||a===CU.displayName.toLowerCase();
 }
 function renumRows(){document.querySelectorAll('#ct-body tr').forEach(function(tr,i){var s=tr.querySelector('td:first-child:not([data-ci])');if(s&&!s.querySelector('input'))s.textContent=i+1})}
@@ -1000,13 +1117,49 @@ function saveCRows(tid,date){
     var row={};cols.forEach(function(_,ci){var inp=tr.querySelector('input[data-ci="'+ci+'"]');var td=$('cr_'+(tr.dataset.row)+'_'+ci);row[ci]=inp?inp.value:(td?td.textContent:'')});rows.push(row);
   });
   if(!rows.length){toast('No rows to save','warn');return}
-  var recId=tid+'_cont_'+Date.now();
-  FS('records/'+recId,{templateId:tid,type:'continuous',rows:rows,submitter:CU.displayName,uid:CU.uid,savedAt:Date.now(),date:date}).then(function(){
-    showMsg('entry-msg','✅ '+rows.length+' row(s) saved!','success');toast('Saved!','success');
-    if(APPROVED_EDIT&&APPROVED_EDIT.tmplId===tid&&APPROVED_EDIT.date===date){FU('requests/'+APPROVED_EDIT.reqId,{used:true,usedAt:Date.now()}).catch(function(){});APPROVED_EDIT=null;updSvcBadge()}
-    $('ct-body').innerHTML='';_ri=0;addCRow(tid);
-    loadTodayEntries(tid,TMPLS[tid],date);
-  }).catch(function(e){toast(e.message,'error')});
+  
+  loading(true);
+  
+  // Find and delete any existing continuous records for this date/template to prevent duplicates
+  _db.collection('records')
+    .where('templateId', '==', tid)
+    .where('type', '==', 'continuous')
+    .where('date', '==', date)
+    .get()
+    .then(function(snap) {
+      var pr = [];
+      snap.forEach(function(doc) {
+        pr.push(FD('records/' + doc.id));
+      });
+      return Promise.all(pr);
+    })
+    .then(function() {
+      // Write the single consolidated continuous daily record
+      var recId = tid + '_cont_' + Date.now();
+      return FS('records/' + recId, {
+        templateId: tid,
+        type: 'continuous',
+        rows: rows,
+        submitter: CU.displayName,
+        uid: CU.uid,
+        savedAt: Date.now(),
+        date: date
+      });
+    })
+    .then(function() {
+      loading(false);
+      showMsg('entry-msg','✅ All ' + rows.length + ' rows saved/updated successfully!','success');
+      toast('Saved!','success');
+      if(APPROVED_EDIT&&APPROVED_EDIT.tmplId===tid&&APPROVED_EDIT.date===date){
+        FU('requests/'+APPROVED_EDIT.reqId,{used:true,usedAt:Date.now()}).catch(function(){});
+        APPROVED_EDIT=null;updSvcBadge();
+      }
+      renderContEntry(tid, tmpl, date);
+    })
+    .catch(function(e) {
+      loading(false);
+      toast(e.message, 'error');
+    });
 }
 function loadTodayEntries(tid,tmpl,date){
   var cols=tmpl.cols||[];var hs=tmpl.serialNumber;
@@ -1018,18 +1171,25 @@ function loadTodayEntries(tid,tmpl,date){
     var th='';if(hs)th+='<th style="background:#1e40af;color:#fff;border:1px solid #1e40af;width:40px;text-align:center">S.No</th>';
     cols.forEach(function(col){th+='<th style="background:'+(col.thBg||'#2563eb')+';color:'+(col.thFc||'#fff')+';font-size:11px;border:1px solid '+(col.thBg||'#2563eb')+';padding:7px 10px">'+escH(col.label)+'</th>';});
     var rows='';allRows.forEach(function(row,i){rows+='<tr>';if(hs)rows+='<td style="text-align:center;font-weight:700;color:var(--mu);border:1px solid var(--bd)">'+(i+1)+'</td>';cols.forEach(function(_,ci){rows+='<td style="border:1px solid var(--bd);padding:6px 9px;font-size:13px">'+escH(String(row[ci]||''))+'</td>'});rows+='</tr>'});
-    sec.innerHTML='<div class="today-sec"><h4>✅ Entries Saved Today ('+allRows.length+' rows)</h4><div class="ctw"><table class="ctbl"><thead><tr>'+th+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    sec.innerHTML='<div class="today-sec"><h4>✅ Summary View: Saved Entries ('+allRows.length+' rows)</h4><div class="ctw"><table class="ctbl"><thead><tr>'+th+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
     sec.classList.remove('hidden');
   });
 }
 
 /* ═══ FORMULA ENGINE ═══ */
-function evalF(formula,vals){
+/* Updated regex matches decimals/percentages as single tokens to prevent variable replacement errors */
+function evalF(formula, vals){
   if(!formula||!formula.trim())return 0;
   var expr=formula.trim().replace(/SUM\(([^)]+)\)/gi,function(_,a){return a.split(',').map(function(x){return x.trim()}).join('+')});
   var keys=Object.keys(vals).filter(function(k){return!isNaN(k)}).map(Number);
-  var tokens=expr.match(/\d+|[^\d]+/g)||[];
-  var result=tokens.map(function(tok){if(/^\d+$/.test(tok)){var n=parseInt(tok,10);if(keys.indexOf(n)>=0)return String(parseFloat(vals[n])||0)}return tok}).join('');
+  var tokens=expr.match(/\d+\.\d+|\d+|[^\d.]+/g)||[];
+  var result=tokens.map(function(tok){
+    if(/^\d+$/.test(tok)){
+      var n=parseInt(tok,10);
+      if(keys.indexOf(n)>=0)return String(parseFloat(vals[n])||0);
+    }
+    return tok;
+  }).join('');
   if(!/^[\d\s+\-*\/.()\[\]]+$/.test(result))throw new Error('bad');
   try{return Function('"use strict";return('+result+')')()}catch(e){return 0}
 }
@@ -1037,8 +1197,14 @@ function evalCF(formula,vals){
   if(!formula||!formula.trim())return 0;
   var expr=formula.trim().replace(/SUM\(([^)]+)\)/gi,function(_,a){return a.split(',').map(function(x){return x.trim()}).join('+')});
   var n=vals.length;
-  var tokens=expr.match(/\d+|[^\d]+/g)||[];
-  var result=tokens.map(function(tok){if(/^\d+$/.test(tok)){var i=parseInt(tok,10);if(i>=1&&i<=n)return String(parseFloat(vals[i-1])||0)}return tok}).join('');
+  var tokens=expr.match(/\d+\.\d+|\d+|[^\d.]+/g)||[];
+  var result=tokens.map(function(tok){
+    if(/^\d+$/.test(tok)){
+      var i=parseInt(tok,10);
+      if(i>=1&&i<=n)return String(parseFloat(vals[i-1])||0);
+    }
+    return tok;
+  }).join('');
   if(!/^[\d\s+\-*\/.()\[\]]+$/.test(result))throw new Error('bad');
   try{return Function('"use strict";return('+result+')')()}catch(e){return 0}
 }
@@ -1047,6 +1213,16 @@ function evalCF(formula,vals){
 function setupView(){
   if(!VIEW_TMPL){$('view-area').innerHTML='<div class="no-entry"><div class="ne-ico">📋</div><div class="ne-h">Select a report from Dashboard first</div></div>';return}
   $('view-ttl').textContent='📋 '+(TMPLS[VIEW_TMPL]?TMPLS[VIEW_TMPL].name:'');
+  
+  // Attach formatting update listeners for range text reviews
+  $('vf').removeEventListener('change', updateDateRangePreview);
+  $('vt').removeEventListener('change', updateDateRangePreview);
+  $('vf').addEventListener('change', updateDateRangePreview);
+  $('vt').addEventListener('change', updateDateRangePreview);
+  
+  var tmpl = TMPLS[VIEW_TMPL];
+  $('v-cum-btn').style.display = (tmpl && tmpl.type === 'continuous') ? 'inline-flex' : 'none';
+  
   FA('records').then(function(snap){
     V_DATES=[];
     snap.forEach(function(d){var r=d.data();if(r.templateId!==VIEW_TMPL)return;if(r.date&&V_DATES.indexOf(r.date)<0)V_DATES.push(r.date)});
@@ -1055,21 +1231,103 @@ function setupView(){
     renderViewCur();
   });
 }
-function applyVF(){V_FROM=$('vf').value;V_TO=$('vt').value;V_IDX=0;renderViewCur()}
-function clearVF(){$('vf').value='';$('vt').value='';V_FROM='';V_TO='';renderViewCur()}
-function vPrev(){if(V_IDX>0){V_IDX--;renderViewCur()}}
-function vNext(){V_IDX++;renderViewCur()}
+function updateDateRangePreview() {
+  var from = $('vf').value;
+  var to = $('vt').value;
+  var el = $('v-selected-range-display');
+  if (el) {
+    if (from || to) {
+      el.textContent = 'Selected Range: ' + (from ? fmtDate(from) : '—') + ' to ' + (to ? fmtDate(to) : '—');
+    } else {
+      el.textContent = '';
+    }
+  }
+}
+function applyVF(){V_FROM=$('vf').value;V_TO=$('vt').value;V_IDX=0;V_ALL_MODE=false;V_CUMULATIVE_MODE=false;renderViewCur()}
+function clearVF(){
+  $('vf').value='';
+  $('vt').value='';
+  V_FROM='';
+  V_TO='';
+  V_ALL_MODE=false;
+  V_CUMULATIVE_MODE=false;
+  var previewLabel = $('v-selected-range-display');
+  if(previewLabel) previewLabel.textContent = '';
+  document.querySelector('.date-nav').style.display = 'flex';
+  renderViewCur();
+}
+function vPrev(){ if(V_IDX>0){ V_ALL_MODE=false; V_CUMULATIVE_MODE=false; V_IDX--; renderViewCur(); } }
+function vNext(){ V_ALL_MODE=false; V_CUMULATIVE_MODE=false; V_IDX++; renderViewCur(); }
+function vToday(){
+  clearVF();
+  V_ALL_MODE = false;
+  V_CUMULATIVE_MODE = false;
+  var t = todayStr();
+  var idx = V_DATES.indexOf(t);
+  if(idx >= 0){
+    V_IDX = idx;
+  } else {
+    V_DATES.push(t);
+    V_DATES.sort();
+    V_IDX = V_DATES.indexOf(t);
+  }
+  renderViewCur();
+}
+function vAllTables(){
+  clearVF();
+  V_ALL_MODE = true;
+  V_CUMULATIVE_MODE = false;
+  renderViewCur();
+}
+function vCumulative() {
+  var tmpl = TMPLS[VIEW_TMPL];
+  if (!tmpl || tmpl.type !== 'continuous') return;
+  if (!V_ALL_MODE && (!V_FROM || !V_TO)) {
+    V_ALL_MODE = true;
+  }
+  V_CUMULATIVE_MODE = true;
+  renderViewCur();
+}
+
 function renderViewCur(){
+  var tmpl=TMPLS[VIEW_TMPL];if(!tmpl)return;
+
+  // Handle Cumulative Ledger rendering for Continuous formats
+  if (V_CUMULATIVE_MODE && tmpl.type === 'continuous') {
+    var datesRange = [];
+    if (V_FROM && V_TO) {
+      datesRange = V_DATES.slice().filter(function(d){return d>=V_FROM && d<=V_TO});
+    } else {
+      datesRange = V_DATES.slice();
+    }
+    renderContinuousCumulative(tmpl, datesRange);
+    return;
+  }
+
+  // Handle sequentially display of all tables
+  if (V_ALL_MODE) {
+    renderAllTablesView(tmpl);
+    return;
+  }
+
+  // Handle Multi-date Range rendering serially
+  if (V_FROM && V_TO) {
+    renderRangeView(tmpl, V_FROM, V_TO);
+    return;
+  }
+
+  // Restore regular single date layout
+  document.querySelector('.date-nav').style.display = 'flex';
+
   var dates=V_DATES.slice();
-  if(V_FROM)dates=dates.filter(function(d){return d>=V_FROM});
-  if(V_TO)dates=dates.filter(function(d){return d<=V_TO});
-  if(!dates.length||V_IDX>=dates.length){
+  if(!dates.length || V_IDX>=dates.length){
     $('v-cur').textContent='—';$('v-by').textContent='';$('v-edit-bar').classList.add('hidden');
-    $('view-area').innerHTML='<div class="no-entry"><div class="ne-ico">📭</div><div class="ne-h">No Entry</div><p class="muted">No record found'+(V_FROM||V_TO?' in selected range':'')+'.</p></div>';return;
+    $('view-area').innerHTML='<div class="no-entry"><div class="ne-ico">📭</div><div class="ne-h">No Entry</div><p class="muted">No record found. Click "Today" to view today\'s generated sheet.</p></div>';
+    return;
   }
   if(V_IDX<0)V_IDX=0;if(V_IDX>=dates.length)V_IDX=dates.length-1;
   var date=dates[V_IDX];$('v-cur').textContent=fmtDate(date);
-  var tmpl=TMPLS[VIEW_TMPL];if(!tmpl)return;
+  
   EDIT_REC={tmplId:VIEW_TMPL,date:date};
   $('v-edit-bar').classList.toggle('hidden',CU.role!=='admin');
   if(tmpl.type==='continuous'){renderContView(tmpl,date)}
@@ -1081,12 +1339,349 @@ function renderViewCur(){
     });
   }
 }
+
+/* Base HTML renderer structure reused dynamically for serial and single table views */
+function renderSingleTableHTML(tmpl, date, recOrRecs) {
+  var html = '<div class="card" style="border: 2px solid var(--bd); padding: 16px; margin-bottom: 20px; background:#fff">';
+  html += '<div style="font-size: 15px; font-weight: 800; color: var(--ac); margin-bottom: 12px; border-bottom: 1.5px solid var(--bd); padding-bottom: 6px; display:flex; justify-content:space-between; align-items:center">';
+  html += '<span>📅 ' + fmtDate(date) + '</span>';
+  html += '<span class="chip c-gr" style="font-size:10px">' + escH(tmpl.name) + '</span>';
+  html += '</div>';
+  
+  if (tmpl.type === 'static') {
+    var rec = recOrRecs;
+    var vals = rec ? (rec.values || {}) : {};
+    
+    if (!rec) {
+      (tmpl.cells || []).forEach(function(c) {
+        if (c.type === 'manual') vals[c.id] = 0;
+        else if (c.type === 'manual_text') vals[c.id] = "";
+        else vals[c.id] = 0;
+      });
+    }
+    
+    var dv = Object.assign({}, vals);
+    var changed = true, pass = 0;
+    while(changed && pass < 12) {
+      changed = false; pass++;
+      (tmpl.cells || []).forEach(function(c) {
+        if (c.type !== 'formula') return;
+        var oldVal = dv[c.id];
+        var newVal = oldVal;
+        try {
+          newVal = evalF(c.formula || '', dv);
+        } catch(e) {
+          newVal = 'ERR';
+        }
+        if (newVal !== oldVal) {
+          dv[c.id] = newVal;
+          changed = true;
+        }
+      });
+    }
+    
+    var cW = tmpl.canvasW || 900, cH = tmpl.canvasH || 600;
+    html += '<div style="overflow:auto"><div class="range-canvas" style="position:relative; width:'+cW+'px; height:'+cH+'px; background:#fff; border:1px solid #ddd; margin: 0 auto">';
+    (tmpl.cells || []).forEach(function(cell) {
+      var dtype = cell.type || 'label';
+      var val = dv[cell.id] !== undefined ? dv[cell.id] : '';
+      var sty = 'position:absolute; left:'+cell.x+'px; top:'+cell.y+'px; width:'+cell.w+'px; height:'+cell.h+'px;'+
+        'background:'+(cell.bg||'#fff')+'; border:'+(cell.border||'2px solid #333')+';'+
+        'font-size:'+(cell.fs||13)+'px; color:'+(cell.fc||'#1e293b')+';'+
+        'font-weight:'+(cell.bold?'bold':'normal')+'; font-style:'+(cell.italic?'italic':'normal')+';'+
+        'display:flex; align-items:center; justify-content:center; text-align:center; padding:2px 4px; box-sizing:border-box; overflow:hidden; word-break:break-word';
+      var display = dtype === 'date_auto' ? fmtDate(date) : (dtype === 'label' ? cell.label || '' : (val !== '' ? val : '0'));
+      html += '<div style="' + sty + '">' + escH(String(display)) + '</div>';
+    });
+    html += '</div></div>';
+    if (rec && rec.submitter) {
+      html += '<div class="muted mt2" style="text-align:right">Submitted by: ' + escH(rec.submitter) + '</div>';
+    } else {
+      html += '<div class="muted mt2" style="text-align:right; font-style:italic">Auto-Generated Placeholder</div>';
+    }
+    
+  } else {
+    var records = recOrRecs || [];
+    var allRows = [];
+    records.forEach(function(r) {
+      (r.rows || []).forEach(function(row) { allRows.push(row) });
+    });
+    
+    var cols = tmpl.cols || [];
+    var hs = tmpl.serialNumber;
+    
+    if (tmpl.heading) html += '<div style="text-align:center; font-size:14px; font-weight:800; padding:4px 0">' + escH(tmpl.heading) + '</div>';
+    if (tmpl.subheading) html += '<div style="text-align:center; font-size:12px; color:var(--t2); padding-bottom:6px">' + escH(tmpl.subheading) + '</div>';
+    
+    var th = '';
+    if (hs) th += '<th style="background:#1e40af; color:#fff; border:1px solid #1e40af; width:40px; text-align:center">S.No</th>';
+    cols.forEach(function(col) {
+      th += '<th style="background:'+(col.thBg||'#2563eb')+'; color:'+(col.thFc||'#fff')+'; font-size:11px; border:1px solid '+(col.thBg||'#2563eb')+'">' + escH(col.label) + '</th>';
+    });
+    
+    var bodyRows = '';
+    var tots = cols.map(function(){ return 0; });
+    if (!allRows.length) {
+      bodyRows = '<tr><td colspan="' + (cols.length + (hs ? 1 : 0)) + '" style="text-align:center; padding:15px; color:var(--mu)">No entries for this date</td></tr>';
+    } else {
+      allRows.forEach(function(row, ri) {
+        bodyRows += '<tr>';
+        if (hs) bodyRows += '<td style="text-align:center; font-weight:700; color:var(--mu); border:1px solid var(--bd)">' + (ri + 1) + '</td>';
+        cols.forEach(function(col, ci) {
+          var v = row[ci] !== undefined ? row[ci] : '';
+          var nv = parseFloat(v); if (!isNaN(nv)) tots[ci] += nv;
+          bodyRows += '<td style="border:1px solid var(--bd); padding:5px 8px; font-size:' + (col.tdFs||13) + 'px; background:' + (col.tdBg||'transparent') + '">' + escH(String(v)) + '</td>';
+        });
+        bodyRows += '</tr>';
+      });
+    }
+    
+    var foot = '<tr>';
+    if (hs) foot += '<td style="background:#f0f4f8; border:1px solid var(--b2); font-weight:700; text-align:center; padding:5px 8px">TOTAL</td>';
+    cols.forEach(function(col, ci) {
+      foot += '<td style="background:#f0f4f8; border:1px solid var(--b2); font-weight:700; padding:5px 8px; text-align:right">' + (tots[ci] === 0 ? '—' : r2(tots[ci])) + '</td>';
+    });
+    foot += '</tr>';
+    
+    html += '<div class="ctw"><table class="ctbl"><thead><tr>' + th + '</tr></thead><tbody>' + bodyRows + '</tbody><tfoot>' + foot + '</tfoot></table></div>';
+  }
+  
+  html += '</div>';
+  return html;
+}
+
+/* Date range querying processed completely client-side to bypass Composite Index errors */
+function renderRangeView(tmpl, fromDate, toDate) {
+  var tid = VIEW_TMPL;
+  loading(true);
+  
+  _db.collection('records')
+    .where('templateId', '==', tid)
+    .get()
+    .then(function(snap) {
+      loading(false);
+      
+      var recsByDate = {};
+      snap.forEach(function(doc) {
+        var r = doc.data();
+        if (r.date && r.date >= fromDate && r.date <= toDate) {
+          if (tmpl.type === 'continuous') {
+            if (!recsByDate[r.date]) recsByDate[r.date] = [];
+            recsByDate[r.date].push(r);
+          } else {
+            recsByDate[r.date] = r;
+          }
+        }
+      });
+      
+      var datesList = [];
+      var curr = new Date(fromDate);
+      var end = new Date(toDate);
+      var safetyCount = 0;
+      while (curr <= end && safetyCount < 31) {
+        datesList.push(curr.toISOString().split('T')[0]);
+        curr.setDate(curr.getDate() + 1);
+        safetyCount++;
+      }
+      if (curr <= end) {
+        toast('Limited range to first 31 days to optimize speed', 'warn');
+      }
+      
+      if (!datesList.length) {
+        $('view-area').innerHTML = '<div class="no-entry"><div class="ne-ico">📭</div><div class="ne-h">No dates in range</div></div>';
+        return;
+      }
+      
+      document.querySelector('.date-nav').style.display = 'none';
+      $('v-edit-bar').classList.add('hidden');
+      
+      // Fixed scrolling direction to vertical column stacking
+      var html = '<div class="flex flex-col gap3" style="gap:20px">';
+      datesList.forEach(function(date) {
+        html += renderSingleTableHTML(tmpl, date, recsByDate[date]);
+      });
+      html += '</div>';
+      $('view-area').innerHTML = html;
+    })
+    .catch(function(err) {
+      loading(false);
+      toast(err.message, 'error');
+    });
+}
+
+/* Sequential display of all recorded days matching the template profile ordered chronologically descending */
+function renderAllTablesView(tmpl) {
+  var tid = VIEW_TMPL;
+  loading(true);
+  
+  _db.collection('records')
+    .where('templateId', '==', tid)
+    .get()
+    .then(function(snap) {
+      loading(false);
+      
+      var recsByDate = {};
+      var foundDates = [];
+      
+      snap.forEach(function(doc) {
+        var r = doc.data();
+        if (r.date) {
+          if (foundDates.indexOf(r.date) < 0) foundDates.push(r.date);
+          
+          if (tmpl.type === 'continuous') {
+            if (!recsByDate[r.date]) recsByDate[r.date] = [];
+            recsByDate[r.date].push(r);
+          } else {
+            recsByDate[r.date] = r;
+          }
+        }
+      });
+      
+      // Chronological descending sort (newest first, oldest last)
+      foundDates.sort(function(a, b) {
+        return b.localeCompare(a);
+      });
+      
+      if (!foundDates.length) {
+        $('view-area').innerHTML = '<div class="no-entry"><div class="ne-ico">📭</div><div class="ne-h">No records logged for this sheet yet</div></div>';
+        return;
+      }
+      
+      // Update topbar descriptions but hide specific arrows
+      document.querySelector('.date-nav').style.display = 'flex';
+      $('v-cur').textContent = 'All Tables (' + foundDates.length + ')';
+      $('v-by').textContent = '';
+      $('v-edit-bar').classList.add('hidden');
+      
+      // Fixed scrolling direction to vertical column stacking
+      var html = '<div class="flex flex-col gap3" style="gap:20px">';
+      foundDates.forEach(function(date) {
+        html += renderSingleTableHTML(tmpl, date, recsByDate[date]);
+      });
+      html += '</div>';
+      $('view-area').innerHTML = html;
+    })
+    .catch(function(err) {
+      loading(false);
+      toast(err.message, 'error');
+    });
+}
+
+/* Merges all continuous template daily entries into a single stacked ledger with S.No, Date and totals */
+function renderContinuousCumulative(tmpl, datesList) {
+  var tid = VIEW_TMPL;
+  loading(true);
+  
+  _db.collection('records')
+    .where('templateId', '==', tid)
+    .get()
+    .then(function(snap) {
+      loading(false);
+      
+      var recsByDate = {};
+      snap.forEach(function(doc) {
+        var r = doc.data();
+        if (r.date) {
+          if (!recsByDate[r.date]) recsByDate[r.date] = [];
+          recsByDate[r.date].push(r);
+        }
+      });
+      
+      var sortedDates = datesList.slice().sort(); // Chronological ascending for standard ledgers
+      var stackedRows = [];
+      sortedDates.forEach(function(date) {
+        var records = recsByDate[date] || [];
+        records.forEach(function(r) {
+          (r.rows || []).forEach(function(row) {
+            stackedRows.push({ date: date, data: row });
+          });
+        });
+      });
+      
+      var cols = tmpl.cols || [];
+      var hs = tmpl.serialNumber;
+      
+      var html = '<div class="card" style="border: 2px solid var(--bd); padding: 16px; background:#fff">';
+      html += '<div style="font-size: 15px; font-weight: 800; color: var(--ac); margin-bottom: 12px; border-bottom: 1.5px solid var(--bd); padding-bottom: 6px; display:flex; justify-content:space-between; align-items:center">';
+      html += '<span>📊 Cumulative Ledger View</span>';
+      html += '<span class="chip c-gr" style="font-size:10px">' + escH(tmpl.name) + '</span>';
+      html += '</div>';
+      
+      if (tmpl.heading) html += '<div style="text-align:center; font-size:14px; font-weight:800; padding:4px 0">' + escH(tmpl.heading) + '</div>';
+      if (tmpl.subheading) html += '<div style="text-align:center; font-size:12px; color:var(--t2); padding-bottom:6px">' + escH(tmpl.subheading) + '</div>';
+      
+      var th = '';
+      if (hs) th += '<th style="background:#1e40af; color:#fff; border:1px solid #1e40af; width:40px; text-align:center">S.No</th>';
+      th += '<th style="background:#1e40af; color:#fff; border:1px solid #1e40af; width:100px; text-align:center">Date</th>';
+      cols.forEach(function(col) {
+        th += '<th style="background:'+(col.thBg||'#2563eb')+'; color:'+(col.thFc||'#fff')+'; font-size:11px; border:1px solid '+(col.thBg||'#2563eb')+'">' + escH(col.label) + '</th>';
+      });
+      
+      var bodyRows = '';
+      var tots = cols.map(function(){ return 0; });
+      if (!stackedRows.length) {
+        bodyRows = '<tr><td colspan="' + (cols.length + (hs ? 1 : 0) + 1) + '" style="text-align:center; padding:20px; color:var(--mu)">No entries found in this selection</td></tr>';
+      } else {
+        stackedRows.forEach(function(rowObj, ri) {
+          bodyRows += '<tr>';
+          if (hs) bodyRows += '<td style="text-align:center; font-weight:700; color:var(--mu); border:1px solid var(--bd)">' + (ri + 1) + '</td>';
+          bodyRows += '<td style="text-align:center; font-weight:700; color:var(--ac); border:1px solid var(--bd)">' + fmtDate(rowObj.date) + '</td>';
+          cols.forEach(function(col, ci) {
+            var v = rowObj.data[ci] !== undefined ? rowObj.data[ci] : '';
+            var nv = parseFloat(v); if (!isNaN(nv)) tots[ci] += nv;
+            bodyRows += '<td style="border:1px solid var(--bd); padding:5px 8px; font-size:' + (col.tdFs||13) + 'px; background:' + (col.tdBg||'transparent') + '">' + escH(String(v)) + '</td>';
+          });
+          bodyRows += '</tr>';
+        });
+      }
+      
+      var foot = '<tr>';
+      var colsCountSpan = hs ? 2 : 1;
+      foot += '<td colspan="' + colsCountSpan + '" style="background:#f0f4f8; border:1px solid var(--b2); font-weight:700; text-align:center; padding:5px 8px">TOTAL</td>';
+      cols.forEach(function(col, ci) {
+        foot += '<td style="background:#f0f4f8; border:1px solid var(--b2); font-weight:700; padding:5px 8px; text-align:right">' + (tots[ci] === 0 ? '—' : r2(tots[ci])) + '</td>';
+      });
+      foot += '</tr>';
+      
+      document.querySelector('.date-nav').style.display = 'flex';
+      $('v-cur').textContent = 'Cumulative View (' + sortedDates.length + ' days)';
+      $('v-by').textContent = '';
+      $('v-edit-bar').classList.add('hidden');
+      
+      html += '<div class="ctw"><table class="ctbl"><thead><tr>' + th + '</tr></thead><tbody>' + bodyRows + '</tbody><tfoot>' + foot + '</tfoot></table></div></div>';
+      $('view-area').innerHTML = html;
+    })
+    .catch(function(err) {
+      loading(false);
+      toast(err.message, 'error');
+    });
+}
+
 function renderStaticView(tmpl,rec,date){
   var cells=tmpl.cells||[];var vals=rec.values||{};
   var cW=tmpl.canvasW||900,cH=tmpl.canvasH||600;
   var dv=Object.assign({},vals);
-  cells.forEach(function(c){if(c.type==='formula'){try{dv[c.id]=evalF(c.formula||'',dv)}catch(e){dv[c.id]='ERR'}}});
-  /* Render canvas with exact cell dimensions — no extra wrapping div for tight export */
+  
+  var changed=true,pass=0;
+  while(changed && pass < 12){
+    changed = false;
+    pass++;
+    cells.forEach(function(c){
+      if(c.type!=='formula')return;
+      var oldVal = dv[c.id];
+      var newVal = oldVal;
+      try {
+        newVal = evalF(c.formula||'', dv);
+      } catch(e) {
+        newVal = 'ERR';
+      }
+      if(newVal !== oldVal){
+        dv[c.id] = newVal;
+        changed = true;
+      }
+    });
+  }
+
   var html='<div style="overflow:auto"><div id="view-canvas" style="display:inline-block;position:relative;width:'+cW+'px;height:'+cH+'px;background:#fff">';
   cells.forEach(function(cell){
     var dtype=cell.type||'label';var val=dv[cell.id]!==undefined?dv[cell.id]:'';
@@ -1114,18 +1709,19 @@ function renderContView(tmpl,date){
     cols.forEach(function(_,ci){fltRow+='<td style="border:1px solid var(--bd);padding:3px"><input type="text" placeholder="Filter…" oninput="fltCont('+ci+')" id="cflt'+ci+'"/></td>'});fltRow+='</tr>';
     var tots=[];cols.forEach(function(){tots.push(0)});
     var bodyRows='';
-    if(!allRows.length){bodyRows='<tr><td colspan="'+(cols.length+(hs?1:0))+'" style="text-align:center;padding:20px;color:var(--mu)">No entries for this date</td></tr>'}
-    else{allRows.forEach(function(row,i){
-      bodyRows+='<tr>';
-      if(hs)bodyRows+='<td style="text-align:center;font-weight:700;color:var(--mu);border:1px solid var(--bd)">'+(i+1)+'</td>';
-      cols.forEach(function(col,ci){
-        var v=row[ci]!==undefined?row[ci]:'';var nv=parseFloat(v);if(!isNaN(nv))tots[ci]+=nv;
-        bodyRows+='<td style="border:1px solid var(--bd);padding:6px 9px;font-size:'+(col.tdFs||13)+'px;color:'+(col.tdFc||'var(--tx)')+';font-weight:'+(col.tdBold?'bold':'normal')+';background:'+(col.tdBg||'transparent')+'" data-ci="'+ci+'">'+escH(String(v))+'</td>';
+    if(!allRows.length){bodyRows='<tr><td colspan="' + (cols.length + (hs ? 1 : 0)) + '" style="text-align:center;padding:20px;color:var(--mu)">No entries for this date</td></tr>'}
+    else{allRows.forEach(function(row, ri) {
+      bodyRows += '<tr>';
+      if(hs) bodyRows += '<td style="text-align:center;font-weight:700;color:var(--mu);border:1px solid var(--bd)">' + (ri + 1) + '</td>';
+      cols.forEach(function(col, ci) {
+        var v = row[ci] !== undefined ? row[ci] : '';
+        var nv = parseFloat(v); if (!isNaN(nv)) tots[ci]+=nv;
+        bodyRows += '<td style="border:1px solid var(--bd); padding:6px 9px; font-size:' + (col.tdFs||13) + 'px; color:'+(col.tdFc||'var(--tx)')+';font-weight:'+(col.tdBold?'bold':'normal')+';background:'+(col.tdBg||'transparent')+'" data-ci="'+ci+'">'+escH(String(v))+'</td>';
       });bodyRows+='</tr>';
     })}
     var foot='<tr>';if(hs)foot+='<td style="background:#f0f4f8;border:1px solid var(--b2);font-weight:700;text-align:center;padding:7px 9px;font-size:12px">TOTAL</td>';
     cols.forEach(function(_,ci){foot+='<td id="ctot'+ci+'" style="background:#f0f4f8;border:1px solid var(--b2);font-weight:700;padding:7px 9px;font-size:12px;text-align:right">'+(tots[ci]===0?'—':r2(tots[ci]))+'</td>'});foot+='</tr>';
-    html+='<div class="ctw" id="cont-view-wrap"><table class="ctbl" id="cvtbl"><thead><tr>'+th+'</tr>'+fltRow+'</thead><tbody>'+bodyRows+'</tbody><tfoot>'+foot+'</tfoot></table></div>';
+    html+='<div class="ctw" id="cont-view-wrap"><table class="ctbl" id="cvtbl"><thead><tr>'+th+'</tr></thead><tbody>'+bodyRows+'</tbody><tfoot>'+foot+'</tfoot></table></div>';
     $('view-area').innerHTML=html;$('v-by').textContent=allRows.length+' rows';
   });
 }
@@ -1133,74 +1729,557 @@ function fltCont(ci){
   var val=($('cflt'+ci).value||'').toLowerCase();
   document.querySelectorAll('#cvtbl tbody tr').forEach(function(tr){var td=tr.querySelector('[data-ci="'+ci+'"]');tr.style.display=(!td||td.textContent.toLowerCase().indexOf(val)>=0)?'':'none'});
   var cols=TMPLS[VIEW_TMPL]?TMPLS[VIEW_TMPL].cols||[]:[],tots=[];cols.forEach(function(){tots.push(0)});
-  document.querySelectorAll('#cvtbl tbody tr').forEach(function(tr){if(tr.style.display==='none')return;cols.forEach(function(_,ci2){var td=tr.querySelector('[data-ci="'+ci2+'"]');if(td){var v=parseFloat(td.textContent);if(!isNaN(v))tots[ci2]+=v}})});
+  document.querySelectorAll('#cvtbl tbody tr').forEach(function(tr){if(tr.style.display==='none')return;cols.forEach(function(_,ci2){var td=tr.querySelector('[data-ci="mini"]');if(td){var v=parseFloat(td.textContent);if(!isNaN(v))tots[ci2]+=v}})});
   cols.forEach(function(_,ci2){var el=$('ctot'+ci2);if(el)el.textContent=tots[ci2]===0?'—':r2(tots[ci2])});
 }
 
-/* EXPORT EXCEL — with formatting */
+/* EXPORT EXCEL — with visual styling support & historical blank generator checks */
 function exportExcel(){
   var tmpl=TMPLS[VIEW_TMPL];if(!tmpl){toast('No report selected','warn');return}
-  var dates=V_DATES.slice();
-  if(V_FROM)dates=dates.filter(function(d){return d>=V_FROM});
-  if(V_TO)dates=dates.filter(function(d){return d<=V_TO});
+  
+  var dates = [];
+  if (V_ALL_MODE) {
+    dates = V_DATES.slice();
+    dates.sort(function(a, b) { return b.localeCompare(a); });
+  } else if (V_FROM && V_TO) {
+    dates = V_DATES.slice().filter(function(d){return d>=V_FROM && d<=V_TO});
+    dates.sort(function(a, b) { return b.localeCompare(a); });
+  } else {
+    // Single-day view mode (handles Today or navigated single arrow sheets)
+    if (V_DATES[V_IDX]) {
+      dates = [V_DATES[V_IDX]];
+    }
+  }
+  
   if(!dates.length){toast('No dates to export','warn');return}
+  
+  // Show Loading Spinner Mask during sheet render
+  loading(true);
   var wb=XLSX.utils.book_new();
   var pr=[];
-  if(tmpl.type==='continuous'){
-    dates.forEach(function(date){
-      pr.push(FA('records').then(function(snap){
-        var allRows=[];
-        snap.forEach(function(d){var r=d.data();if(r.templateId!==VIEW_TMPL||r.type!=='continuous'||r.date!==date)return;(r.rows||[]).forEach(function(row){allRows.push(row)})});
-        var cols=tmpl.cols||[];var rows=[];
-        /* Heading rows */
-        if(tmpl.heading){rows.push([tmpl.heading]);rows.push([tmpl.subheading||''])}
-        rows.push(['Date: '+fmtDate(date)]);rows.push([]);
-        /* Header row */
-        var hdr=[];if(tmpl.serialNumber)hdr.push('S.No');cols.forEach(function(c){hdr.push(c.label)});rows.push(hdr);
-        /* Data rows */
-        allRows.forEach(function(row,i){var r=[];if(tmpl.serialNumber)r.push(i+1);cols.forEach(function(_,ci){var v=row[ci]||'';r.push(isNaN(parseFloat(v))?v:parseFloat(v))});rows.push(r)});
-        /* Totals row */
-        var tots=[];if(tmpl.serialNumber)tots.push('TOTAL');
-        cols.forEach(function(_,ci){var s=0;allRows.forEach(function(row){s+=parseFloat(row[ci])||0});tots.push(s)});
-        rows.push(tots);
-        var ws=XLSX.utils.aoa_to_sheet(rows);
-        /* Column widths */
-        ws['!cols']=[{wch:8}].concat(cols.map(function(c){return{wch:Math.max(c.label.length+2,12)}}));
-        /* Style header row index — heading offset */
-        var hdrRowIdx=(tmpl.heading?3:0)+1;
-        var range=XLSX.utils.decode_range(ws['!ref']||'A1');
-        for(var C=range.s.c;C<=range.e.c;C++){
-          var addr=XLSX.utils.encode_cell({r:hdrRowIdx,c:C});
-          if(ws[addr]){ws[addr].s={fill:{fgColor:{rgb:'2563EB'}},font:{color:{rgb:'FFFFFF'},bold:true},alignment:{horizontal:'center'}}}
-        }
-        /* Totals row style */
-        var totRowIdx=rows.length-1;
-        for(var C2=range.s.c;C2<=range.e.c;C2++){var a2=XLSX.utils.encode_cell({r:totRowIdx,c:C2});if(ws[a2])ws[a2].s={fill:{fgColor:{rgb:'F0F4F8'}},font:{bold:true},alignment:{horizontal:'right'}}}
-        var sn=(fmtDate(date)||date).replace(/[\\/:*?\[\]]/g,'-').slice(0,31);
-        XLSX.utils.book_append_sheet(wb,ws,sn);
-      }));
-    });
-  } else {
-    dates.forEach(function(date){
-      pr.push(FG('records/'+VIEW_TMPL+'_'+date).then(function(snap){
-        var cells=tmpl.cells||[];var vals=snap.exists?snap.data().values||{}:{};
-        var rows=[];
-        rows.push([tmpl.name]);rows.push(['Date: '+fmtDate(date)]);rows.push([]);
-        var hdr=cells.map(function(c){return c.label||('Cell '+c.id)});rows.push(hdr);
-        var dataRow=cells.map(function(c){var v=vals[c.id];return v!==undefined?(isNaN(parseFloat(v))?v:parseFloat(v)):''});rows.push(dataRow);
-        var ws=XLSX.utils.aoa_to_sheet(rows);
-        ws['!cols']=cells.map(function(c){return{wch:Math.max((c.label||'Cell').length+2,10)}});
-        var sn=(fmtDate(date)||date).replace(/[\\/:*?\[\]]/g,'-').slice(0,31);
-        XLSX.utils.book_append_sheet(wb,ws,sn);
-      }));
-    });
+
+  function cleanHex(hex) {
+    if (!hex) return 'FFFFFF';
+    hex = hex.trim().replace('#', '');
+    if (hex.length === 3) {
+      return (hex[0]+hex[0] + hex[1]+hex[1] + hex[2]+hex[2]).toUpperCase();
+    }
+    return hex.toUpperCase();
   }
-  Promise.all(pr).then(function(){XLSX.writeFile(wb,(tmpl.name||'report').replace(/[\\/:*?\[\]]/g,'-')+'.xlsx');toast('Exported!','success')}).catch(function(e){toast(e.message,'error')});
+
+  function parseBorder(borderStr) {
+    if (!borderStr || borderStr === 'none') {
+      return {
+        top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+        bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+        left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+        right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+      };
+    }
+    var rgb = '1E293B';
+    var match = borderStr.match(/#[0-9a-fA-F]{3,6}/);
+    if (match) rgb = cleanHex(match[0]);
+    var style = 'thin';
+    if (borderStr.indexOf('dashed') >= 0) style = 'dashed';
+    else if (borderStr.indexOf('thick') >= 0 || borderStr.indexOf('3px') >= 0) style = 'medium';
+    return {
+      top: { style: style, color: { rgb: rgb } },
+      bottom: { style: style, color: { rgb: rgb } },
+      left: { style: style, color: { rgb: rgb } },
+      right: { style: style, color: { rgb: rgb } }
+    };
+  }
+
+  if(tmpl.type==='continuous'){
+    if (V_CUMULATIVE_MODE) {
+      // EXPORT AS A SINGLE CUMULATIVE CONSOLIDATED LEDGER
+      pr.push(FA('records').then(function(snap){
+        var recsByDate = {};
+        snap.forEach(function(d){
+          var r = d.data();
+          if (r.templateId === VIEW_TMPL && r.type === 'continuous' && dates.indexOf(r.date) >= 0) {
+            if (!recsByDate[r.date]) recsByDate[r.date] = [];
+            recsByDate[r.date].push(r);
+          }
+        });
+        
+        var sortedDates = dates.slice().sort(); // sort chronological ascending
+        var stackedRows = [];
+        sortedDates.forEach(function(date) {
+          var records = recsByDate[date] || [];
+          records.forEach(function(r) {
+            (r.rows || []).forEach(function(row) {
+              stackedRows.push({ date: date, data: row });
+            });
+          });
+        });
+        
+        var cols=tmpl.cols||[];
+        var hs=tmpl.serialNumber;
+        var totalCols = cols.length + (hs ? 1 : 0) + 1; // plus 1 for Date column
+        
+        var ws = {};
+        var merges = [];
+        var rowIdx = 0;
+
+        function writeCell(r, c, val, style) {
+          var ref = XLSX.utils.encode_cell({ r: r, c: c });
+          var type = typeof val === 'number' ? 'n' : 's';
+          ws[ref] = { t: type, v: val };
+          if (style) ws[ref].s = style;
+        }
+
+        if(tmpl.heading){
+          writeCell(rowIdx, 0, tmpl.heading + " (Cumulative Ledger)", {
+            font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '1E3A8A' } },
+            alignment: { horizontal: 'center', vertical: 'center' }
+          });
+          merges.push({ s: { r: rowIdx, c: 0 }, e: { r: rowIdx, c: totalCols - 1 } });
+          rowIdx++;
+        }
+        
+        writeCell(rowIdx, 0, 'Exported Cumulative Range: ' + fmtDate(sortedDates[0]) + ' to ' + fmtDate(sortedDates[sortedDates.length - 1]), {
+          font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: '475569' } },
+          alignment: { horizontal: 'left', vertical: 'center' }
+        });
+        merges.push({ s: { r: rowIdx, c: 0 }, e: { r: rowIdx, c: totalCols - 1 } });
+        rowIdx += 2;
+
+        var cCol = 0;
+        if(hs){
+          writeCell(rowIdx, cCol, 'S.No', {
+            fill: { fgColor: { rgb: '1E40AF' } },
+            font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: parseBorder('1px solid #1E40AF')
+          });
+          cCol++;
+        }
+        writeCell(rowIdx, cCol, 'Date', {
+          fill: { fgColor: { rgb: '1E40AF' } },
+          font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: parseBorder('1px solid #1E40AF')
+        });
+        cCol++;
+
+        cols.forEach(function(col, ci){
+          var thBg = cleanHex(col.thBg || '#2563eb');
+          var thFc = cleanHex(col.thFc || '#ffffff');
+          writeCell(rowIdx, cCol + ci, col.label, {
+            fill: { fgColor: { rgb: thBg } },
+            font: { name: 'Segoe UI', sz: col.thFs || 11, bold: col.thBold !== false, color: { rgb: thFc } },
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+            border: parseBorder('1px solid #' + thBg)
+          });
+        });
+        rowIdx++;
+
+        var tots = cols.map(function(){return 0});
+        stackedRows.forEach(function(rowObj, ri){
+          var colIdx = 0;
+          if(hs){
+            writeCell(rowIdx, colIdx, ri + 1, {
+              fill: { fgColor: { rgb: 'F8FAFC' } },
+              font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: '475569' } },
+              alignment: { horizontal: 'center', vertical: 'center' },
+              border: parseBorder('thin')
+            });
+            colIdx++;
+          }
+          writeCell(rowIdx, colIdx, fmtDate(rowObj.date), {
+            font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: '2563EB' } },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: parseBorder('thin')
+          });
+          colIdx++;
+
+          cols.forEach(function(col, ci){
+            var valStr = rowObj.data[ci] !== undefined ? rowObj.data[ci] : '';
+            var valNum = parseFloat(valStr);
+            var isNum = !isNaN(valNum) && valStr !== '';
+            if(isNum) tots[ci] += valNum;
+
+            var finalVal = isNum ? valNum : valStr;
+            var tdBg = cleanHex(col.tdBg || '#ffffff');
+            var tdFc = cleanHex(col.tdFc || '#1e293b');
+
+            writeCell(rowIdx, colIdx + ci, finalVal, {
+              fill: { fgColor: { rgb: tdBg } },
+              font: { name: 'Segoe UI', sz: col.tdFs || 11, bold: !!col.tdBold, color: { rgb: tdFc } },
+              alignment: { horizontal: isNum ? 'right' : 'left', vertical: 'center' },
+              border: parseBorder('thin')
+            });
+          });
+          rowIdx++;
+        });
+
+        var spanCols = hs ? 2 : 1;
+        writeCell(rowIdx, 0, 'TOTAL', {
+          fill: { fgColor: { rgb: 'F1F5F9' } },
+          font: { name: 'Segoe UI', sz: 11, bold: true, color: { rgb: '1E293B' } },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: parseBorder('1px solid #CBD5E1')
+        });
+        if(hs) {
+          writeCell(rowIdx, 1, '', { fill: { fgColor: { rgb: 'F1F5F9' } }, border: parseBorder('1px solid #CBD5E1') });
+        }
+        cols.forEach(function(col, ci){
+          var tVal = tots[ci] === 0 ? '—' : tots[ci];
+          writeCell(rowIdx, spanCols + ci, tVal, {
+            fill: { fgColor: { rgb: 'F1F5F9' } },
+            font: { name: 'Segoe UI', sz: 11, bold: true, color: { rgb: '1E293B' } },
+            alignment: { horizontal: typeof tVal === 'number' ? 'right' : 'center', vertical: 'center' },
+            border: parseBorder('1px solid #CBD5E1')
+          });
+        });
+
+        ws['!merges'] = merges;
+        var colWidths = [];
+        if(hs) colWidths.push({ wch: 6 });
+        colWidths.push({ wch: 12 }); // Date column
+        cols.forEach(function(col){
+          colWidths.push({ wch: Math.max((col.label || '').length + 3, col.colWidth ? Math.round(col.colWidth / 7) : 12) });
+        });
+        ws['!cols'] = colWidths;
+        ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rowIdx, c: totalCols - 1 } });
+
+        XLSX.utils.book_append_sheet(wb, ws, "Cumulative Ledger");
+      }));
+    } else {
+      dates.forEach(function(date){
+        pr.push(FA('records').then(function(snap){
+          var allRows=[];
+          snap.forEach(function(d){
+            var r=d.data();
+            if(r.templateId!==VIEW_TMPL||r.type!=='continuous'||r.date!==date)return;
+            (r.rows||[]).forEach(function(row){allRows.push(row)});
+          });
+          
+          var cols=tmpl.cols||[];
+          var hs=tmpl.serialNumber;
+          var totalCols = cols.length + (hs ? 1 : 0);
+
+          var ws = {};
+          var merges = [];
+          var rowIdx = 0;
+
+          function writeCell(r, c, val, style) {
+            var ref = XLSX.utils.encode_cell({ r: r, c: c });
+            var type = typeof val === 'number' ? 'n' : 's';
+            ws[ref] = { t: type, v: val };
+            if (style) ws[ref].s = style;
+          }
+
+          if(tmpl.heading){
+            writeCell(rowIdx, 0, tmpl.heading, {
+              font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '1E3A8A' } },
+              alignment: { horizontal: 'center', vertical: 'center' }
+            });
+            merges.push({ s: { r: rowIdx, c: 0 }, e: { r: rowIdx, c: totalCols - 1 } });
+            rowIdx++;
+          }
+          if(tmpl.subheading){
+            writeCell(rowIdx, 0, tmpl.subheading, {
+              font: { name: 'Segoe UI', sz: 11, italic: true, color: { rgb: '475569' } },
+              alignment: { horizontal: 'center', vertical: 'center' }
+            });
+            merges.push({ s: { r: rowIdx, c: 0 }, e: { r: rowIdx, c: totalCols - 1 } });
+            rowIdx++;
+          }
+          writeCell(rowIdx, 0, 'Date: ' + fmtDate(date), {
+            font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: '475569' } },
+            alignment: { horizontal: 'left', vertical: 'center' }
+          });
+          merges.push({ s: { r: rowIdx, c: 0 }, e: { r: rowIdx, c: totalCols - 1 } });
+          rowIdx += 2;
+
+          var startColIdx = 0;
+          if(hs){
+            writeCell(rowIdx, 0, 'S.No', {
+              fill: { fgColor: { rgb: '1E40AF' } },
+              font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+              alignment: { horizontal: 'center', vertical: 'center' },
+              border: parseBorder('1px solid #1E40AF')
+            });
+            startColIdx = 1;
+          }
+          cols.forEach(function(col, ci){
+            var thBg = cleanHex(col.thBg || '#2563eb');
+            var thFc = cleanHex(col.thFc || '#ffffff');
+            writeCell(rowIdx, startColIdx + ci, col.label, {
+              fill: { fgColor: { rgb: thBg } },
+              font: { name: 'Segoe UI', sz: col.thFs || 11, bold: col.thBold !== false, color: { rgb: thFc } },
+              alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+              border: parseBorder('1px solid #' + thBg)
+            });
+          });
+          rowIdx++;
+
+          var tots = cols.map(function(){return 0});
+          allRows.forEach(function(row, ri){
+            if(hs){
+              writeCell(rowIdx, 0, ri + 1, {
+                fill: { fgColor: { rgb: 'F8FAFC' } },
+                font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: '475569' } },
+                alignment: { horizontal: 'center', vertical: 'center' },
+                border: parseBorder('thin')
+              });
+            }
+            cols.forEach(function(col, ci){
+              var valStr = row[ci] !== undefined ? row[ci] : '';
+              var valNum = parseFloat(valStr);
+              var isNum = !isNaN(valNum) && valStr !== '';
+              if(isNum) tots[ci] += valNum;
+
+              var finalVal = isNum ? valNum : valStr;
+              var tdBg = cleanHex(col.tdBg || '#ffffff');
+              var tdFc = cleanHex(col.tdFc || '#1e293b');
+
+              writeCell(rowIdx, startColIdx + ci, finalVal, {
+                fill: { fgColor: { rgb: tdBg } },
+                font: { name: 'Segoe UI', sz: col.tdFs || 11, bold: !!col.tdBold, color: { rgb: tdFc } },
+                alignment: { horizontal: isNum ? 'right' : 'left', vertical: 'center' },
+                border: parseBorder('thin')
+              });
+            });
+            rowIdx++;
+          });
+
+          if(hs){
+            writeCell(rowIdx, 0, 'TOTAL', {
+              fill: { fgColor: { rgb: 'F1F5F9' } },
+              font: { name: 'Segoe UI', sz: 11, bold: true, color: { rgb: '1E293B' } },
+              alignment: { horizontal: 'center', vertical: 'center' },
+              border: parseBorder('1px solid #CBD5E1')
+            });
+          }
+          cols.forEach(function(col, ci){
+            var tVal = tots[ci] === 0 ? '—' : tots[ci];
+            writeCell(rowIdx, startColIdx + ci, tVal, {
+              fill: { fgColor: { rgb: 'F1F5F9' } },
+              font: { name: 'Segoe UI', sz: 11, bold: true, color: { rgb: '1E293B' } },
+              alignment: { horizontal: typeof tVal === 'number' ? 'right' : 'center', vertical: 'center' },
+              border: parseBorder('1px solid #CBD5E1')
+            });
+          });
+
+          ws['!merges'] = merges;
+          var colWidths = [];
+          if(hs) colWidths.push({ wch: 6 });
+          cols.forEach(function(col){
+            colWidths.push({ wch: Math.max((col.label || '').length + 3, col.colWidth ? Math.round(col.colWidth / 7) : 12) });
+          });
+          ws['!cols'] = colWidths;
+          ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rowIdx, c: totalCols - 1 } });
+
+          var sn = (fmtDate(date) || date).replace(/[\\/:*?\[\]]/g, '-').slice(0, 31);
+          XLSX.utils.book_append_sheet(wb, ws, sn);
+        }));
+      });
+    }
+  } else {
+    /* Chronologically ascending simulation solves blank records cumulative math */
+    pr.push(FA('records').then(function(snap){
+      var allRecs = [];
+      snap.forEach(function(doc) {
+        var r = doc.data();
+        if (r.templateId === VIEW_TMPL) allRecs.push(r);
+      });
+      allRecs.sort(function(a, b) { return a.date.localeCompare(b.date); });
+
+      var runningPrevSums = {};
+      var computedValsByDate = {};
+      var cells = tmpl.cells || [];
+
+      var startDate = tmpl.startDate || (allRecs.length ? allRecs[0].date : todayStr());
+      var maxEndDate = dates[0];
+      if (!maxEndDate) maxEndDate = todayStr();
+
+      /* Bypassed browser timezone offset errors with a numeric-based string incrementer */
+      function nextDateStr(dateStr) {
+        var parts = dateStr.split('-');
+        var y = parseInt(parts[0], 10);
+        var m = parseInt(parts[1], 10) - 1;
+        var d = parseInt(parts[2], 10);
+        var dt = new Date(y, m, d + 1);
+        var ny = dt.getFullYear();
+        var nm = String(dt.getMonth() + 1).padStart(2, '0');
+        var nd = String(dt.getDate()).padStart(2, '0');
+        return ny + '-' + nm + '-' + nd;
+      }
+
+      var datesChain = [];
+      var currentStr = startDate;
+      var safety = 0;
+      while (currentStr <= maxEndDate && safety < 1000) {
+        datesChain.push(currentStr);
+        currentStr = nextDateStr(currentStr);
+        safety++;
+      }
+
+      var savedRecsMap = {};
+      allRecs.forEach(function(r) { savedRecsMap[r.date] = r; });
+
+      datesChain.forEach(function(dt) {
+        var rec = savedRecsMap[dt];
+        var vals = rec ? Object.assign({}, rec.values || {}) : {};
+
+        if (!rec) {
+          cells.forEach(function(c) {
+            if (c.type === 'manual') vals[c.id] = 0;
+            else if (c.type === 'manual_text') vals[c.id] = "";
+            else vals[c.id] = 0;
+          });
+        }
+
+        var changed = true, pass = 0;
+        while(changed && pass < 12) {
+          changed = false; pass++;
+          cells.forEach(function(c) {
+            var oldVal = vals[c.id];
+            var newVal = oldVal;
+            if (c.type === 'cumulative') {
+              var srcVal = parseFloat(vals[c.cumSrc]) || 0;
+              var prev = parseFloat(runningPrevSums[c.cumSrc]) || 0;
+              newVal = prev + srcVal;
+            } else if (c.type === 'formula') {
+              try { newVal = evalF(c.formula || '', vals); } catch(e) { newVal = 'ERR'; }
+            }
+            if (newVal !== oldVal) {
+              vals[c.id] = newVal;
+              changed = true;
+            }
+          });
+        }
+
+        computedValsByDate[dt] = vals;
+
+        cells.forEach(function(c) {
+          runningPrevSums[c.id] = (runningPrevSums[c.id] || 0) + (parseFloat(vals[c.id]) || 0);
+        });
+      });
+
+      dates.forEach(function(date){
+        var vals = computedValsByDate[date] || {};
+        var dv = Object.assign({}, vals);
+
+        var xBounds = [];
+        var yBounds = [];
+        cells.forEach(function(c){
+          xBounds.push(c.x, c.x + c.w);
+          yBounds.push(c.y, c.y + c.h);
+        });
+        xBounds = Array.from(new Set(xBounds)).sort(function(a,b){return a-b});
+        yBounds = Array.from(new Set(yBounds)).sort(function(a,b){return a-b});
+
+        var ws = {};
+        var merges = [];
+        var rowOffset = 4;
+
+        function writeCell(r, c, val, style) {
+          var ref = XLSX.utils.encode_cell({ r: r, c: c });
+          var type = typeof val === 'number' ? 'n' : 's';
+          ws[ref] = { t: type, v: val };
+          if (style) ws[ref].s = style;
+        }
+
+        for(var r = 0; r < yBounds.length - 1; r++){
+          for(var c = 0; c < xBounds.length - 1; c++){
+            writeCell(r + rowOffset, c, '', {
+              fill: { fgColor: { rgb: 'FFFFFF' } },
+              border: parseBorder('1px solid #F1F5F9')
+            });
+          }
+        }
+
+        writeCell(0, 0, tmpl.name, {
+          font: { name: 'Segoe UI', sz: 14, bold: true, color: { rgb: '1E3A8A' } },
+          alignment: { horizontal: 'left', vertical: 'center' }
+        });
+        merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: Math.max(1, xBounds.length - 2) } });
+
+        writeCell(1, 0, 'Date: ' + fmtDate(date), {
+          font: { name: 'Segoe UI', sz: 11, bold: true, color: { rgb: '475569' } },
+          alignment: { horizontal: 'left', vertical: 'center' }
+        });
+        merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: Math.max(1, xBounds.length - 2) } });
+
+        cells.forEach(function(cell){
+          var dtype = cell.type || 'label';
+          var rawVal = dv[cell.id];
+          var displayVal = dtype === 'date_auto' ? fmtDate(date) : (dtype === 'label' ? cell.label || '' : (rawVal !== undefined && rawVal !== '' ? rawVal : '0'));
+          var numericVal = parseFloat(displayVal);
+          var isNum = !isNaN(numericVal) && dtype !== 'label' && dtype !== 'date_auto';
+          var cellVal = isNum ? numericVal : displayVal;
+
+          var colStart = xBounds.indexOf(cell.x);
+          var colEnd = xBounds.indexOf(cell.x + cell.w) - 1;
+          var rowStart = yBounds.indexOf(cell.y) + rowOffset;
+          var rowEnd = yBounds.indexOf(cell.y + cell.h) - 1 + rowOffset;
+
+          var cellStyle = {
+            fill: { fgColor: { rgb: cleanHex(cell.bg || '#ffffff') } },
+            font: {
+              name: 'Segoe UI',
+              sz: cell.fs || 11,
+              bold: !!cell.bold,
+              italic: !!cell.italic,
+              color: { rgb: cleanHex(cell.fc || '#1e293b') }
+            },
+            alignment: {
+              horizontal: isNum ? 'right' : 'center',
+              vertical: 'center',
+              wrapText: true
+            },
+            border: parseBorder(cell.border)
+          };
+
+          for (var rowI = rowStart; rowI <= rowEnd; rowI++) {
+            for (var colI = colStart; colI <= colEnd; colI++) {
+              writeCell(rowI, colI, rowI === rowStart && colI === colStart ? cellVal : '', cellStyle);
+            }
+          }
+          merges.push({ s: { r: rowStart, c: colStart }, e: { r: rowEnd, c: colEnd } });
+        });
+
+        ws['!merges'] = merges;
+
+        var colWidths = [];
+        for(var i = 0; i < xBounds.length - 1; i++){
+          colWidths.push({ wpx: xBounds[i+1] - xBounds[i] });
+        }
+        ws['!cols'] = colWidths;
+
+        var rowHeights = [];
+        rowHeights[0] = { hpx: 25 };
+        rowHeights[1] = { hpx: 20 };
+        rowHeights[2] = { hpx: 10 };
+        rowHeights[3] = { hpx: 10 };
+        for(var j = 0; j < yBounds.length - 1; j++){
+          rowHeights[j + rowOffset] = { hpx: yBounds[j+1] - yBounds[j] };
+        }
+        ws['!rows'] = rowHeights;
+        ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: yBounds.length - 1 + rowOffset, c: xBounds.length - 2 } });
+
+        var sn = (fmtDate(date) || date).replace(/[\\/:*?\[\]]/g, '-').slice(0, 31);
+        XLSX.utils.book_append_sheet(wb, ws, sn);
+      });
+    }));
+  }
+
+  Promise.all(pr).then(function(){
+    loading(false); // Hide Loading Spinner Mask
+    XLSX.writeFile(wb, (tmpl.name || 'report').replace(/[\\/:*?\[\]]/g, '-') + '.xlsx');
+    toast('Excel sheet exported successfully!', 'success');
+  }).catch(function(e){
+    loading(false);
+    toast(e.message, 'error');
+  });
 }
 
 /* EXPORT IMAGE — tight crop to canvas element */
 function exportImg(){
-  /* For static: capture only the view-canvas div (no white area) */
   var canvas=$('view-canvas');
   var el=canvas||$('view-area');
   if(!el){toast('Nothing to export','warn');return}
@@ -1211,7 +2290,7 @@ function exportImg(){
   }).catch(function(e){toast(e.message,'error')});
 }
 
-/* EDIT RECORD */
+/* RECORD EDIT */
 function openRecEdit(){
   if(!EDIT_REC||CU.role!=='admin')return;
   var tmpl=TMPLS[EDIT_REC.tmplId];if(!tmpl)return;
@@ -1282,6 +2361,8 @@ function useApproved(reqId,tmplId,date){APPROVED_EDIT={reqId:reqId,tmplId:tmplId
 /* ═══ STATIC BUILDER — Grid-snapped, attached cells ═══ */
 function startSB(){
   SB_ET=null;SB_CELLS=[];SB_NID=1;
+  SB_HISTORY=[]; // Reset Undo History
+  saveSBState();
   $('sb-name').value='';$('sb-date').value=todayStr();
   $('sb-canvas').innerHTML='';
   $('create-main').classList.add('hidden');$('sb-panel').classList.remove('hidden');$('cb-panel').classList.add('hidden');
@@ -1293,9 +2374,31 @@ function resizeSB(){
   $('sb-wrap').style.width=w+'px';$('sb-wrap').style.height=h+'px';
   $('sb-canvas').style.width=w+'px';$('sb-canvas').style.height=h+'px';
 }
+
+/* Save undo snapshot states */
+function saveSBState() {
+  if (SB_HISTORY.length >= 30) {
+    SB_HISTORY.shift();
+  }
+  SB_HISTORY.push(JSON.stringify(SB_CELLS));
+}
+
+function undoSB() {
+  if (SB_HISTORY.length < 2) {
+    toast('Nothing to undo', 'warn');
+    return;
+  }
+  SB_HISTORY.pop(); // Pop current state
+  var prevState = SB_HISTORY[SB_HISTORY.length - 1];
+  SB_CELLS = JSON.parse(prevState);
+  SB_NID = SB_CELLS.length ? Math.max.apply(null, SB_CELLS.map(function(c){return c.id})) + 1 : 1;
+  $('sb-canvas').innerHTML = '';
+  SB_CELLS.forEach(function(c){ renderSCell(c) });
+  toast('Undo successful', 'info');
+}
+
 function addCell(preset){
   var id=SB_NID++;
-  /* Default: snap to grid, place at first free spot */
   var x=preset&&preset.x!=null?preset.x:snapG(10);
   var y=preset&&preset.y!=null?preset.y:snapG(10+(SB_CELLS.length%10)*GRID*4);
   var w=preset&&preset.w?preset.w:GRID*8;
@@ -1307,9 +2410,10 @@ function addCell(preset){
     border:preset&&preset.border||'2px solid #333333',
     type:preset&&preset.type||'label',formula:preset&&preset.formula||'',
     assignedTo:preset&&preset.assignedTo||'',cumSrc:preset&&preset.cumSrc||null};
-  SB_CELLS.push(cell);renderSCell(cell);return cell;
+  SB_CELLS.push(cell);renderSCell(cell);
+  saveSBState();
+  return cell;
 }
-/* Snap-add adjacent cell — shares border with reference */
 function addSnap(refId,dir){
   var ref=SB_CELLS.filter(function(c){return c.id===refId})[0];if(!ref)return;
   var x=ref.x,y=ref.y,w=ref.w,h=ref.h;
@@ -1317,8 +2421,13 @@ function addSnap(refId,dir){
   else if(dir==='l')x=ref.x-ref.w;
   else if(dir==='b')y=ref.y+ref.h;
   else if(dir==='t')y=ref.y-ref.h;
+  
+  if (checkOverlap(refId, x, y, w, h)) {
+    toast('Cannot snap cell here: position is occupied!', 'warn');
+    return;
+  }
+  
   var cell=addCell({x:Math.max(0,x),y:Math.max(0,y),w:w,h:h,fs:ref.fs,border:ref.border,bg:'#ffffff'});
-  /* Store adjacency */
   if(!cell.adj)cell.adj={};if(!ref.adj)ref.adj={};
   if(dir==='r'){cell.adj.l=refId;ref.adj.r=cell.id}
   else if(dir==='l'){cell.adj.r=refId;ref.adj.l=cell.id}
@@ -1326,6 +2435,17 @@ function addSnap(refId,dir){
   else if(dir==='t'){cell.adj.b=refId;ref.adj.t=cell.id}
 }
 function getCell(id){return SB_CELLS.filter(function(c){return c.id===id})[0]}
+
+function checkOverlap(cellId, x, y, w, h) {
+  for (var i = 0; i < SB_CELLS.length; i++) {
+    var c = SB_CELLS[i];
+    if (c.id === cellId) continue;
+    if (!(x + w <= c.x || x >= c.x + c.w || y + h <= c.y || y >= c.y + c.h)) {
+      return true; // Bounding boxes overlap!
+    }
+  }
+  return false;
+}
 
 function renderSCell(cell){
   var canvas=$('sb-canvas');if(!canvas)return;
@@ -1354,7 +2474,6 @@ function renderSCell(cell){
     '<div class="rh rh-se" data-d="se" data-cid="'+cell.id+'"></div>';
   div.addEventListener('mousedown',onSCDown);div.addEventListener('touchstart',onSCTouch,{passive:false});
 }
-/* Move a cell and push ALL adjacent cells (recursively) */
 function moveCell(cell,nx,ny,visited){
   visited=visited||{};if(visited[cell.id])return;visited[cell.id]=true;
   var dx=nx-cell.x,dy=ny-cell.y;cell.x=snapG(nx);cell.y=snapG(ny);renderSCell(cell);
@@ -1364,7 +2483,6 @@ function moveCell(cell,nx,ny,visited){
   if(adj.b&&dy!==0){var bc=getCell(adj.b);if(bc)moveCell(bc,bc.x,bc.y+dy,visited)}
   if(adj.t&&dy!==0){var tc=getCell(adj.t);if(tc)moveCell(tc,tc.x,tc.y+dy,visited)}
 }
-/* Resize: when shared edge moves, adjacent cell adjusts too */
 function resizeCell(cell,dir,dx,dy){
   var adj=cell.adj||{};
   if(dir==='e'){
@@ -1387,18 +2505,32 @@ function resizeCell(cell,dir,dx,dy){
 function onSCDown(e){
   var rh=e.target.closest('.rh');
   if(rh){RDIR=rh.dataset.d;var cid=parseInt(rh.dataset.cid);RESIZE=getCell(cid);
-    if(RESIZE){ROX=e.clientX;ROY=e.clientY;RX0=RESIZE.x;RY0=RESIZE.y;RW0=RESIZE.w;RH0=RESIZE.h}e.preventDefault();return}
+    if(RESIZE){
+      ROX=e.clientX;ROY=e.clientY;RX0=RESIZE.x;RY0=RESIZE.y;RW0=RESIZE.w;RH0=RESIZE.h;
+      CELL_DRAG_START = { id: RESIZE.id, x: RESIZE.x, y: RESIZE.y, w: RESIZE.w, h: RESIZE.h };
+    }
+    e.preventDefault();return}
   if(e.target.tagName==='BUTTON')return;
   var cid2=parseInt(e.currentTarget.id.replace('sbc',''));DRAG=getCell(cid2);
-  if(DRAG){DX=e.clientX-DRAG.x;DY=e.clientY-DRAG.y}e.preventDefault();
+  if(DRAG){
+    DX=e.clientX-DRAG.x;DY=e.clientY-DRAG.y;
+    CELL_DRAG_START = { id: DRAG.id, x: DRAG.x, y: DRAG.y, w: DRAG.w, h: DRAG.h };
+  }e.preventDefault();
 }
 function onSCTouch(e){
   var t=e.touches[0];var rh=e.target.closest('.rh');
   if(rh){RDIR=rh.dataset.d;var cid=parseInt(rh.dataset.cid);RESIZE=getCell(cid);
-    if(RESIZE){ROX=t.clientX;ROY=t.clientY;RX0=RESIZE.x;RY0=RESIZE.y;RW0=RESIZE.w;RH0=RESIZE.h}e.preventDefault();return}
+    if(RESIZE){
+      ROX=t.clientX;ROY=t.clientY;RX0=RESIZE.x;RY0=RESIZE.y;RW0=RESIZE.w;RH0=RESIZE.h;
+      CELL_DRAG_START = { id: RESIZE.id, x: RESIZE.x, y: RESIZE.y, w: RESIZE.w, h: RESIZE.h };
+    }
+    e.preventDefault();return}
   if(e.target.tagName==='BUTTON')return;
   var cid2=parseInt(e.currentTarget.id.replace('sbc',''));DRAG=getCell(cid2);
-  if(DRAG){DX=t.clientX-DRAG.x;DY=t.clientY-DRAG.y}e.preventDefault();
+  if(DRAG){
+    DX=t.clientX-DRAG.x;DY=t.clientY-DRAG.y;
+    CELL_DRAG_START = { id: DRAG.id, x: DRAG.x, y: DRAG.y, w: DRAG.w, h: DRAG.h };
+  }e.preventDefault();
 }
 function doMove(cx,cy){
   if(DRAG){moveCell(DRAG,Math.max(0,cx-DX),Math.max(0,cy-DY),{})}
@@ -1406,10 +2538,31 @@ function doMove(cx,cy){
 }
 document.addEventListener('mousemove',function(e){doMove(e.clientX,e.clientY)});
 document.addEventListener('touchmove',function(e){if(DRAG||RESIZE){doMove(e.touches[0].clientX,e.touches[0].clientY);e.preventDefault()}},{passive:false});
-document.addEventListener('mouseup',function(){DRAG=null;RESIZE=null});
-document.addEventListener('touchend',function(){DRAG=null;RESIZE=null});
 
-/* Cell config modal */
+/* Reverts cell movements if they land in overlapping spaces */
+function endMoveOrResize() {
+  if (DRAG || RESIZE) {
+    var activeCell = DRAG || RESIZE;
+    if (checkOverlap(activeCell.id, activeCell.x, activeCell.y, activeCell.w, activeCell.h)) {
+      if (CELL_DRAG_START && CELL_DRAG_START.id === activeCell.id) {
+        activeCell.x = CELL_DRAG_START.x;
+        activeCell.y = CELL_DRAG_START.y;
+        activeCell.w = CELL_DRAG_START.w;
+        activeCell.h = CELL_DRAG_START.h;
+        renderSCell(activeCell);
+        toast('Cells cannot override / overlap each other!', 'warn');
+      }
+    } else {
+      saveSBState();
+    }
+  }
+  DRAG = null;
+  RESIZE = null;
+  CELL_DRAG_START = null;
+}
+document.addEventListener('mouseup', endMoveOrResize);
+document.addEventListener('touchend', endMoveOrResize);
+
 function openCM(id){
   var cell=getCell(id);if(!cell)return;SB_EC=id;
   $('cm-id').textContent=id;$('cm-lbl').value=cell.label||'';$('cm-type').value=cell.type||'label';
@@ -1433,8 +2586,9 @@ function applyCell(){
   cell.bg=$('cm-bg').value;cell.fc=$('cm-fc').value;cell.fs=parseInt($('cm-fs').value)||13;
   cell.bold=$('cm-bold').checked;cell.italic=$('cm-ital').checked;cell.border=$('cm-brd').value;cell.assignedTo=$('cm-asgn').value;
   renderSCell(cell);closeMo('cell-mo');
+  saveSBState();
 }
-function delCell(){if(!confirm('Delete cell?'))return;SB_CELLS=SB_CELLS.filter(function(c){return c.id!==SB_EC});var el=$('sbc'+SB_EC);if(el)el.remove();closeMo('cell-mo')}
+function delCell(){if(!confirm('Delete cell?'))return;SB_CELLS=SB_CELLS.filter(function(c){return c.id!==SB_EC});var el=$('sbc'+SB_EC);if(el)el.remove();closeMo('cell-mo');saveSBState();}
 function prevStatic(){
   var cells=SB_CELLS;var cW=parseInt($('sb-cw').value)||900,cH=parseInt($('sb-ch').value)||600;
   var html='<div style="overflow:auto"><div style="position:relative;width:'+cW+'px;height:'+cH+'px;background:#fff;border:1px solid #ccc">';
@@ -1456,6 +2610,8 @@ function saveST(){
 function editST(id){
   var t=TMPLS[id];SB_ET=id;SB_CELLS=JSON.parse(JSON.stringify(t.cells||[]));
   SB_NID=SB_CELLS.length?Math.max.apply(null,SB_CELLS.map(function(c){return c.id}))+1:1;
+  SB_HISTORY=[];
+  saveSBState();
   $('sb-name').value=t.name;$('sb-date').value=t.startDate||'';$('sb-cw').value=t.canvasW||900;$('sb-ch').value=t.canvasH||600;
   $('sb-canvas').innerHTML='';SB_CELLS.forEach(function(c){renderSCell(c)});resizeSB();
   $('create-main').classList.add('hidden');$('sb-panel').classList.remove('hidden');$('cb-panel').classList.add('hidden');
@@ -1525,6 +2681,42 @@ function saveCT(){
 }
 function editCT(id){var t=TMPLS[id];CB_ET=id;$('cb-name').value=t.name;$('cb-head').value=t.heading||'';$('cb-sub').value=t.subheading||'';$('cb-sno').checked=!!t.serialNumber;$('cb-cols').innerHTML='';(t.cols||[]).forEach(function(c){addCCol(c)});$('create-main').classList.add('hidden');$('cb-panel').classList.remove('hidden');$('sb-panel').classList.add('hidden')}
 
+/* Clone existing design sheet formats */
+function duplicateTmpl(id) {
+  var t = TMPLS[id];
+  if(!t) { toast('Template not found', 'error'); return; }
+  var cloned = JSON.parse(JSON.stringify(t));
+  cloned.name = cloned.name + " Copy";
+  cloned.savedAt = Date.now();
+  cloned.createdBy = CU.uid;
+  
+  if (cloned.type === 'continuous') {
+    CB_ET = null;
+    $('cb-name').value = cloned.name;
+    $('cb-head').value = cloned.heading || '';
+    $('cb-sub').value = cloned.subheading || '';
+    $('cb-sno').checked = !!cloned.serialNumber;
+    $('cb-cols').innerHTML = '';
+    (cloned.cols || []).forEach(function(c){ addCCol(c) });
+    $('create-main').classList.add('hidden'); $('cb-panel').classList.remove('hidden'); $('sb-panel').classList.add('hidden');
+  } else {
+    SB_ET = null;
+    SB_CELLS = cloned.cells || [];
+    SB_NID = SB_CELLS.length ? Math.max.apply(null, SB_CELLS.map(function(c){return c.id})) + 1 : 1;
+    SB_HISTORY = [];
+    saveSBState();
+    $('sb-name').value = cloned.name;
+    $('sb-date').value = todayStr();
+    $('sb-cw').value = cloned.canvasW || 900;
+    $('sb-ch').value = cloned.canvasH || 600;
+    $('sb-canvas').innerHTML = '';
+    SB_CELLS.forEach(function(c){ renderSCell(c) });
+    resizeSB();
+    $('create-main').classList.add('hidden'); $('sb-panel').classList.remove('hidden'); $('cb-panel').classList.add('hidden');
+  }
+  toast('Template cloned! Make adjustments and save.', 'success');
+}
+
 /* ═══ TEMPLATE LIST ═══ */
 function loadTmplList(){
   var list=$('tmpl-list');if(!list)return;
@@ -1535,7 +2727,8 @@ function loadTmplList(){
     '<div><div class="bold">'+escH(t.name)+' <span class="chip '+(t.type==='continuous'?'c-p':'c-b')+'">'+t.type+'</span>'+
     (t.stopped?'<span class="chip c-r" style="margin-left:4px">STOPPED</span>':t.paused?'<span class="chip c-w" style="margin-left:4px">PAUSED</span>':'<span class="chip c-g" style="margin-left:4px">ACTIVE</span>')+'</div>'+
     '<div class="muted">'+(t.type==='continuous'?(t.cols||[]).length+' cols':(t.cells||[]).length+' cells')+' · Start: '+(t.startDate||'—')+'</div></div>'+
-    '<div class="flex gap2"><button class="btn btn-p btn-xs" onclick="'+(t.type==='continuous'?'editCT':'editST')+'(\''+id+'\')">✏️ Edit</button>'+
+    '<div class="flex gap2" style="flex-wrap:wrap;justify-content:flex-end"><button class="btn btn-p btn-xs" onclick="'+(t.type==='continuous'?'editCT':'editST')+'(\''+id+'\')">✏️ Edit</button>'+
+    '<button class="btn btn-a2 btn-xs" onclick="duplicateTmpl(\''+id+'\')">👥 Duplicate</button>'+
     '<button class="btn btn-gh btn-xs" onclick="openTM(\''+id+'\')">⚙ Manage</button></div></div>'
   )}).join('');
 }
@@ -1594,12 +2787,10 @@ function doBackup(){
   var tmplIds=scope==='all'?Object.keys(TMPLS):[($('bk-tmpl').value||'')];
   if(!tmplIds.length||!tmplIds[0]){toast('Select a report','warn');return}
   loading(true);
-  /* Collect templates + records */
   FA('records').then(function(recSnap){
     var data={exportedAt:new Date().toISOString(),templates:{},records:{}};
     tmplIds.forEach(function(id){if(TMPLS[id])data.templates[id]=TMPLS[id]});
     recSnap.forEach(function(d){var r=d.data();if(tmplIds.indexOf(r.templateId)>=0)data.records[d.id]=r});
-    /* Also backup users if everything */
     if(scope==='all'){data.users=USERS}
     var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
     var url=URL.createObjectURL(blob);var a=document.createElement('a');
@@ -1637,6 +2828,66 @@ function doReset(){
   }).catch(function(e){loading(false);showMsg('reset-msg',e.message,'error')});
 }
 
+/* ═══ AUTO GENERATION ═══ */
+/* Automatically writes daily entries for active template profiles to keep stats complete */
+function autoGenerateTodayRecords() {
+  var today = todayStr();
+  _db.collection('records').where('date', '==', today).get().then(function(snap) {
+    var existingTmpls = {};
+    snap.forEach(function(doc) {
+      var r = doc.data();
+      if (r.templateId) existingTmpls[r.templateId] = true;
+    });
+    
+    var pr = [];
+    Object.entries(TMPLS).forEach(function(entry) {
+      var tid = entry[0], t = entry[1];
+      if (t.stopped || t.paused) return;
+      if (existingTmpls[tid]) return; // Today's record already exists!
+      
+      if (t.type === 'static') {
+        var vals = {};
+        (t.cells || []).forEach(function(c) {
+          if (c.type === 'manual') vals[c.id] = 0;
+          else if (c.type === 'manual_text') vals[c.id] = "";
+          else vals[c.id] = 0;
+        });
+        
+        pr.push(FS('records/' + tid + '_' + today, {
+          templateId: tid,
+          date: today,
+          type: 'static',
+          values: vals,
+          submitter: 'System Auto-Gen',
+          uid: 'system',
+          savedAt: Date.now()
+        }));
+      } else {
+        var recId = tid + '_cont_autogen_' + Date.now();
+        pr.push(FS('records/' + recId, {
+          templateId: tid,
+          date: today,
+          type: 'continuous',
+          rows: [],
+          submitter: 'System Auto-Gen',
+          uid: 'system',
+          savedAt: Date.now()
+        }));
+      }
+    });
+    
+    if (pr.length > 0) {
+      Promise.all(pr).then(function() {
+        console.log('System generated ' + pr.length + ' active daily records.');
+      }).catch(function(err) {
+        console.error('Auto-generation error: ', err);
+      });
+    }
+  }).catch(function(err) {
+    console.error('Failed to run daily checks: ', err);
+  });
+}
+
 /* ═══ BUBBLE ANIMATION ═══ */
 function makeBubbles(){
   var scr=$('login-screen');
@@ -1655,51 +2906,42 @@ function makeBubbles(){
 function init(){
   makeBubbles();
 
-  /* Login button — bind both click and touchend for mobile */
   var lb=$('lbtn');
   if(lb){
     lb.addEventListener('click',function(e){e.preventDefault();doLogin()});
     lb.addEventListener('touchend',function(e){e.preventDefault();e.stopPropagation();doLogin()});
   }
 
-  /* Enter key navigation */
   var lid=$('lid'),lpw=$('lpw');
   if(lid){
     lid.addEventListener('keyup',function(e){if(e.key==='Enter'&&lpw)lpw.focus()});
-    lid.addEventListener('touchend',function(){/* keep focus */});
   }
   if(lpw){
     lpw.addEventListener('keyup',function(e){if(e.key==='Enter')doLogin()});
   }
 
-  /* Auto-login if Firebase has a cached session.
-     Wait for Firebase to be ready first (poll), then check auth state.
-     This handles mobile browsers that cache the session. */
   function setupAuthListener(){
     if(!_fbReady){
       setTimeout(setupAuthListener, 300);
       return;
     }
     _auth.onAuthStateChanged(function(user){
-      /* Only auto-login if user is not already logging in manually */
       if(user && !CU && !($('lbtn').disabled)){
         _db.doc('users/'+user.uid).get().then(function(snap){
           if(snap.exists && !CU){
             CU=Object.assign({uid:user.uid},snap.data());
             onLogin();
           }
-        }).catch(function(){/* ignore - user will log in manually */});
+        }).catch(function(){});
       }
     });
   }
   setupAuthListener();
 }
 
-/* Start init after DOM is ready */
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded',init);
 }else{
-  /* Small delay ensures all inline scripts have run */
   setTimeout(init,10);
 }
 </script>
